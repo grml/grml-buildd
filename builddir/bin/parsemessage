@@ -11,6 +11,29 @@
 # {
 #         to "|bin/parsemessage"
 # }
+# 
+# for signing uploads usage of: http://kelgar.0x539.de/~pkern/buildlog-handler.git is recommended. 
+#
+# example config: 
+#
+# # This file needs to be placed into your home as ~/.buildlog.cnf,
+# # adjusted to your needs
+#
+# [General]
+# From: Alexander Wirt <formorer@grml.org>
+# Return-Path: formorer@grml.org
+# Sendmail: /usr/sbin/sendmail
+#
+# [Auto-Sign]
+# #Inbox: ~/Maildir/.buildd
+# Inbox: ~/processed-logs
+# Stash: ~/processed-logs-done
+# Key-ID: BC7D020A
+#
+# [buildds]
+# # grml
+# amd64: build@amd64.grml.org
+#
 
 use strict; 
 use warnings;
