@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# dumps the needsbuild informations from reprepro info 
+# ~/public_html/needsbuild_ARCH
+# valid archs are listed in ARCHS
+
+ARCHS="amd64 i386"
+
+cd ~/grml-repo/archive
+
+for a in $ARCHS
+do
+	reprepro build-needing grml-testing $a > ~/public_html/needsbuild_$a
+done
+

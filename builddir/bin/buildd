@@ -1,0 +1,52 @@
+#!/bin/bash 
+#
+
+# This is the buildd part which gets needsbuildfile from deb.grml.org 
+# processes it and do whats neccessary. 
+# its called via cron
+#
+# relevant files: ~/blacklist 
+#   lists packagenames or packageversion which should not get processed here
+#   i.e. - truecrypt or
+#        - truecrypt-2.6.23-grml_4.3a-6
+#
+#  ~/buildlog - contains a list which already got processed. Every 
+#  packageversion listed here does not get tried anymore. 
+#  ~/buildd-cron.log 
+#  logfile for this 
+
+log () {
+	echo $* | ts >> ~/buildd-cron.log
+}
+lockfile -r0 ~/buildd.lck || exit 
+
+trap "rm -f ~/buildd.lck" TERM INT EXIT
+
+eval $(dpkg-architecture  -s)
+
+log "-------------Starting----------------" 
+
+log "Update chroot"
+sbuild-update sid | ts >> ~/buildd-cron.log
+log "Chroot updated"
+
+for package in $(curl http://deb.grml.org/~archive/needsbuild_$DEB_BUILD_ARCH 2>/dev/null| awk '{print $1"_"$2}')
+do
+	if grep -q "$package" ~/buildlog
+	then
+		log "$package already tried" 
+		continue
+	fi
+
+	name=$(echo "$package" | sed -e 's/\([^_]\+\).*/\1/')
+	if grep -q $name ~/blacklist
+	then		
+		log "$package blacklisted" 
+		continue
+	fi
+	log "Building $package" 
+	sbuild -b $package > /dev/null
+	log "Build finished" 
+	echo "$package" >> ~/buildlog 
+done
+log "-------------Finished----------------"

@@ -1,0 +1,71 @@
+#!/usr/bin/perl 
+
+# This parses a message coming via mail. 
+# If the mail has a pgp clearsigned changesfile
+# included it fetches the relevant files from the build 
+# dir and places them into /home/build/upload/ 
+#
+# Example for maildrop: 
+#
+# if ( /^Subject: .*Log for successful build of.*/ )
+# {
+#         to "|bin/parsemessage"
+# }
+
+use strict; 
+use warnings;
+use Perl6::Slurp;
+use Crypt::GPG;
+use Email::Simple;
+use File::Copy; 
+use File::Basename; 
+
+
+my $upload = '/home/build/upload/';
+my $builddir = '/home/build/build/'; 
+
+use MIME::Parser;
+my $parser = new MIME::Parser;
+my $entity = $parser->parse(\*STDIN);
+
+use Mail::GnuPG;
+my $mg = new Mail::GnuPG(); 
+
+my ($rc, $id, $sender) = $mg->verify($entity); 
+
+
+if ($rc) {
+	die "gnupg failed with error code: $rc";
+} else {
+	my $archspec = `dpkg --print-architecture`;
+	chomp($archspec);
+
+	my $body = $entity->stringify_body;
+	my ($source, $version);
+	foreach my $line (split("\n", $body)) {
+		if ($line =~ /^Source: (.*)/) {
+			$source = $1; 
+		}
+		if ($line =~ /^Version: (.*)/) {
+			$version = $1; 
+		}
+		last if $version && $source; 
+	}
+
+	die "Illegal changesfile. " unless $version && $source;
+
+	open (my $fh, '>', "$upload/${source}_${version}_${archspec}.changes")
+		or die "Could not open $upload/${source}_${version}_${archspec}.changes for writing"; 
+	$entity->print_body($fh);
+	close ($fh); 
+
+	my $files = `dcmd $upload/${source}_${version}_${archspec}.changes`; 
+	
+	foreach my $file (split('\s+', $files)) {
+		my $basename = basename($file);
+		next if $basename =~ /\.changes$/; 
+		copy("$builddir/$basename", "$upload/") or die "Copy failed from $builddir/$file to $upload failed: $!";
+	}
+}
+
+$parser->filer->purge();

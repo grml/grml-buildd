@@ -1,0 +1,39 @@
+#!/bin/sh 
+
+# uploadhelper for our buildd setup. It takes every changes from $UPLOAD 
+# directory and feeds them the dput. If successfully upload it cleans up. 
+#
+# operations got logged into $LOGFILE (/home/build/upload.log)
+
+UPLOAD=/home/build/upload/
+LOGFILE=/home/build/upload.log
+
+log () {
+	echo $* | ts >> $LOGFILE
+}
+lockfile -r0 ~/upload.lck || exit
+
+trap "rm -f ~/upload.lck" TERM INT EXIT
+
+log "Starting upload processing"
+
+cd $UPLOAD 
+for i in *.changes 
+do 
+	if [ -e $(basename $i .changes).grml.upload ]
+	then
+		log "$i already uploaded - skipping"
+	else 
+		log "upload $i to grml" 
+		if dput grml $i 2>&1 | ts >> $LOGFILE
+		then
+			log "$i uploaded" 
+			log "cleanup $i" 
+			dcmd rm $i $(basename $i .changes).grml.upload  
+		else
+			log "upload of $i failed"
+		fi
+	fi
+done
+
+log "Upload processing finished"
