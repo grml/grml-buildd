@@ -20,6 +20,8 @@ log () {
 }
 lockfile -r0 ~/buildd.lck || exit 
 
+cd ~/build 
+
 trap "rm -f ~/buildd.lck" TERM INT EXIT
 
 eval $(dpkg-architecture  -s)
