@@ -87,7 +87,7 @@ if ($rc) {
 	foreach my $file (split('\s+', $files)) {
 		my $basename = basename($file);
 		next if $basename =~ /\.changes$/; 
-		copy("$builddir/$basename", "$upload/") or die "Copy failed from $builddir/$file to $upload failed: $!";
+		copy("$builddir/$basename", "$upload/") or die "Copy failed from $builddir/$basename to $upload failed: $!";
 	}
 }
 
