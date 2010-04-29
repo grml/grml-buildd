@@ -1,5 +1,5 @@
 #!/bin/bash 
-#
+
 
 # This is the buildd part which gets needsbuildfile from deb.grml.org 
 # processes it and do whats neccessary. 
@@ -20,35 +20,61 @@ log () {
 }
 lockfile -r0 ~/buildd.lck || exit 
 
-cd ~/build 
+cd ~/build/
 
 trap "rm -f ~/buildd.lck" TERM INT EXIT
 
-eval $(dpkg-architecture  -s)
+build () {
+	DEB_BUILD_ARCH=$1 
+	
+	log "-------------Starting----------------" 
 
-log "-------------Starting----------------" 
+	log "Update chroot"
+	sbuild-update unstable-$DEB_BUILD_ARCH | ts >> ~/buildd-cron.log
+	log "Chroot updated"
+	
+	test -e ~/buildlog-$DEB_BUILD_ARCH || touch ~/buildlog-$DEB_BUILD_ARCH
 
-log "Update chroot"
-sbuild-update sid | ts >> ~/buildd-cron.log
-log "Chroot updated"
+	for package in $(curl http://deb.grml.org/~archive/needsbuild_$DEB_BUILD_ARCH 2>/dev/null| awk '{print $1"_"$2}')
+	do
+		if grep -q "$package" ~/buildlog-$DEB_BUILD_ARCH
+		then
+			log "$package already tried" 
+			continue
+		fi
 
-for package in $(curl http://deb.grml.org/~archive/needsbuild_$DEB_BUILD_ARCH 2>/dev/null| awk '{print $1"_"$2}')
-do
-	if grep -q "$package" ~/buildlog
-	then
-		log "$package already tried" 
-		continue
-	fi
+		name=$(echo "$package" | sed -e 's/\([^_]\+\).*/\1/')
+		if grep -q $name ~/blacklist
+		then		
+			log "$package blacklisted" 
+			continue
+		fi
 
-	name=$(echo "$package" | sed -e 's/\([^_]\+\).*/\1/')
-	if grep -q $name ~/blacklist
-	then		
-		log "$package blacklisted" 
-		continue
-	fi
-	log "Building $package" 
-	sbuild -b $package > /dev/null
-	log "Build finished" 
-	echo "$package" >> ~/buildlog 
-done
-log "-------------Finished----------------"
+		if [ -e ~/blacklist-$DEB_BUILD_ARCH -a grep -q $name ~/blacklist-$DEB_BUILD_ARCH ]
+		then
+			log "$package blacklisted on arch specific list"
+			continue
+		fi
+
+		log "Building $package for $DEB_BUILD_ARCH" 
+		sbuild --arch=$DEB_BUILD_ARCH -b $package > /dev/null
+		log "Build finished" 
+		echo "$package" >> ~/buildlog-$DEB_BUILD_ARCH
+	done
+	log "-------------Finished----------------"
+}
+
+test -e ~/.buildd && source ~/.buildd
+
+if [ -n "$BUILD_ARCHS" ] 
+then
+	for arch in $BUILD_ARCHS
+	do
+		build $arch
+	done
+else
+	eval $(dpkg-architecture  -s)
+	build $DEB_BUILD_ARCH
+fi
+
+
