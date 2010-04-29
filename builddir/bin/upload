@@ -17,6 +17,8 @@ trap "rm -f ~/upload.lck" TERM INT EXIT
 
 log "Starting upload processing"
 
+shopt -s nullglob
+
 cd $UPLOAD 
 for i in *.changes 
 do 
