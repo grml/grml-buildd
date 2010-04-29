@@ -14,6 +14,9 @@
 #  packageversion listed here does not get tried anymore. 
 #  ~/buildd-cron.log 
 #  logfile for this 
+#
+# specify supported arches in ~/.buildd:
+# BUILD_ARCHS="amd64 i386"
 
 log () {
 	echo $* | ts >> ~/buildd-cron.log
