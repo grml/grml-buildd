@@ -1,0 +1,2 @@
+0,50,30 * * * * /home/build/bin/buildd
+*/5 * * * * /home/build/bin/upload
